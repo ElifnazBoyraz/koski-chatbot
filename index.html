@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOSKİ Vatandaş Destek</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Onest', sans-serif; }
+        .kchat, .kchat * { box-sizing: border-box; }
+        .kchat {
+          --navy:#063d75; --blue:#0a5cb8; --blue2:#1478e6; --cyan:#17b3c9; --ink:#0b1f38;
+          --mist:#eef5fc; --line:rgba(10,92,184,.12);
+          position: fixed; right: 22px; bottom: 22px; z-index: 99999;
+          font-family:"Onest",-apple-system,"Segoe UI",sans-serif;
+        }
+        .kchat-fab{width:66px;height:66px;border-radius:50%;border:none;cursor:pointer;
+          background:linear-gradient(140deg,var(--blue),var(--cyan));color:#fff;font-size:1.7rem;
+          position:relative;box-shadow:0 18px 40px -10px rgba(10,92,184,.7);display:grid;place-items:center;
+          transition:transform .35s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;}
+        .kchat-fab:hover{transform:scale(1.08) rotate(-4deg);box-shadow:0 22px 48px -8px rgba(10,92,184,.85);}
+        .kchat-fab:active{transform:scale(.96);}
+        .kchat-pulse::before{content:"";position:absolute;inset:-6px;border-radius:50%;
+          border:2px solid var(--cyan);animation:kpulse 2.2s ease-out infinite;pointer-events:none;}
+        @keyframes kpulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.55);opacity:0}}
+        .kchat-dot{position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;
+          background:#ff5d5d;border:2.5px solid #fff;box-shadow:0 0 0 2px rgba(255,93,93,.3);}
+        .kchat-panel{position:absolute;right:0;bottom:84px;width:384px;max-width:calc(100vw - 40px);
+          height:596px;max-height:calc(100vh - 130px);background:#fff;border-radius:26px;overflow:hidden;
+          box-shadow:0 40px 90px -24px rgba(6,61,117,.55),0 0 0 1px rgba(6,61,117,.06);
+          display:flex;flex-direction:column;transform-origin:bottom right;
+          animation:kpop .38s cubic-bezier(.34,1.4,.5,1) both;}
+        @keyframes kpop{from{opacity:0;transform:translateY(24px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .kchat-header{position:relative;color:#fff;padding:20px 20px 18px;overflow:hidden;
+          background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 55%,var(--cyan) 120%);}
+        .kchat-header::after{content:"";position:absolute;right:-30px;top:-40px;width:160px;height:160px;
+          border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);}
+        .kchat-hrow{display:flex;align-items:center;gap:13px;position:relative;z-index:1;}
+        .kchat-avatar{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.16);
+          backdrop-filter:blur(8px);display:grid;place-items:center;font-size:1.4rem;flex:0 0 auto;
+          border:1px solid rgba(255,255,255,.25);}
+        .kchat-header h6{margin:0;font-weight:700;font-size:1.05rem;font-family:"Sora",sans-serif;}
+        .kchat-status{font-size:.78rem;color:#d7ecff;display:flex;align-items:center;gap:6px;}
+        .kchat-on{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.3);}
+        .kchat-close{margin-left:auto;background:rgba(255,255,255,.14);border:none;color:#fff;width:34px;height:34px;
+          border-radius:10px;cursor:pointer;display:grid;place-items:center;font-size:1.05rem;transition:background .2s,transform .2s;}
+        .kchat-close:hover{background:rgba(255,255,255,.28);transform:rotate(90deg);}
+        .kchat-body{flex:1;overflow-y:auto;padding:20px 16px 8px;scroll-behavior:smooth;
+          background:radial-gradient(120% 60% at 100% 0%,rgba(23,179,201,.08),transparent 60%),#f3f8fd;}
+        .kchat-body::-webkit-scrollbar{width:7px;}
+        .kchat-body::-webkit-scrollbar-thumb{background:rgba(10,92,184,.24);border-radius:8px;}
+        .kmsg{display:flex;margin-bottom:14px;animation:kin .35s ease both;}
+        @keyframes kin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .kmsg.user{justify-content:flex-end;}
+        .kbub{max-width:80%;padding:12px 15px;font-size:.92rem;line-height:1.5;border-radius:18px;
+          white-space:pre-wrap;word-break:break-word;}
+        .kbub.bot{background:#fff;color:var(--ink);border-bottom-left-radius:6px;
+          box-shadow:0 8px 22px -12px rgba(6,61,117,.35);border:1px solid var(--line);}
+        .kbub.user{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;
+          border-bottom-right-radius:6px;box-shadow:0 10px 22px -10px rgba(10,92,184,.6);}
+        .kbub.bot strong{color:var(--navy);}
+        .kbavatar{width:30px;height:30px;border-radius:9px;margin-right:8px;flex:0 0 auto;
+          background:linear-gradient(140deg,var(--blue),var(--cyan));color:#fff;display:grid;place-items:center;
+          font-size:.85rem;align-self:flex-end;}
+        .klink{display:inline-flex;align-items:center;gap:7px;margin:6px 6px 0 0;padding:7px 13px;border-radius:12px;
+          background:var(--mist);color:var(--blue);font-size:.82rem;font-weight:600;text-decoration:none;
+          border:1px solid var(--line);transition:background .2s,transform .2s,color .2s;}
+        .klink:hover{background:var(--blue);color:#fff;transform:translateX(3px);}
+        .kquickwrap{display:flex;flex-wrap:wrap;gap:8px;padding:4px 4px 14px;}
+        .kquick{border:1px solid var(--line);background:#fff;color:var(--navy);padding:9px 14px;border-radius:999px;
+          font-size:.84rem;font-weight:600;cursor:pointer;transition:all .22s;}
+        .kquick:hover{background:var(--blue);color:#fff;border-color:transparent;transform:translateY(-2px);
+          box-shadow:0 8px 18px -8px rgba(10,92,184,.6);}
+        .ktyping{display:flex;gap:4px;padding:14px 16px;}
+        .ktyping span{width:8px;height:8px;border-radius:50%;background:var(--cyan);animation:kt 1.1s infinite ease-in-out;}
+        .ktyping span:nth-child(2){animation-delay:.18s;} .ktyping span:nth-child(3){animation-delay:.36s;}
+        @keyframes kt{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-6px);opacity:1}}
+        .kchat-footer{padding:12px 14px 14px;background:#fff;border-top:1px solid var(--line);}
+        .kchat-inputbar{display:flex;align-items:center;gap:9px;background:#f0f5fb;border-radius:16px;
+          padding:6px 6px 6px 16px;border:1px solid transparent;transition:border-color .2s,box-shadow .2s;}
+        .kchat-inputbar:focus-within{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(23,179,201,.15);background:#fff;}
+        .kchat-input{flex:1;border:none;background:transparent;outline:none;font-size:.93rem;color:var(--ink);font-family:inherit;}
+        .kchat-input::placeholder{color:#90a4bd;}
+        .kchat-send{width:42px;height:42px;border-radius:12px;border:none;cursor:pointer;flex:0 0 auto;
+          background:linear-gradient(140deg,var(--blue),var(--cyan));color:#fff;font-size:1.05rem;
+          display:grid;place-items:center;transition:transform .2s,opacity .2s;}
+        .kchat-send:hover{transform:scale(1.08);} .kchat-send:disabled{opacity:.5;cursor:not-allowed;}
+        .kchat-disc{text-align:center;font-size:.68rem;color:#90a4bd;margin:8px 0 0;}
+        .kchat-hidden{display:none !important;}
+        @media(max-width:480px){.kchat{right:16px;bottom:16px;} .kchat-panel{height:calc(100vh - 110px);}}
+    </style>
+</head>
+<body>
+
+<div style="padding: 50px; text-align: center;">
+    <h1 style="color: #063d75;">KOSKİ Kurumsal Web Sitesi</h1>
+    <p>Sağ alt köşedeki Dijital Asistan butonuna tıklayarak sohbeti başlatabilirsiniz.</p>
+</div>
+
+<div class="kchat" id="kchat">
+    <div class="kchat-panel kchat-hidden" id="kchatPanel">
+        <div class="kchat-header">
+            <div class="kchat-hrow">
+                <div class="kchat-avatar"><i class="bi bi-droplet-half"></i></div>
+                <div>
+                    <h6>KOSKİ Dijital Asistan</h6>
+                    <div class="kchat-status"><span class="kchat-on"></span> Çevrimiçi · Anında yanıt</div>
+                </div>
+                <button class="kchat-close" id="kchatClose" aria-label="Kapat"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+        <div class="kchat-body" id="kchatBody"></div>
+        <div class="kchat-footer">
+            <form class="kchat-inputbar" id="kchatForm">
+                <input class="kchat-input" id="kchatInput" placeholder="Sorunuzu yazın... (örn. sular ne zaman gelir?)" autocomplete="off">
+                <button type="submit" class="kchat-send" id="kchatSend" aria-label="Gönder"><i class="bi bi-send-fill"></i></button>
+            </form>
+            <p class="kchat-disc">KOSKİ Genel Müdürlüğü · Acil durumlar için ALO 185</p>
+        </div>
+    </div>
+    <button class="kchat-fab kchat-pulse" id="kchatFab" aria-label="Sohbeti aç">
+        <i class="bi bi-chat-dots-fill" id="kchatFabIcon"></i>
+        <span class="kchat-dot" id="kchatUnread"></span>
+    </button>
+</div>
+
+<script>
+    (function () {
+      // 1) API ADRESİ (FastAPI Backend)
+      const KCHAT_CONFIG = {
+        apiUrl: "http://localhost:8000/api/talepler/yeni"
+      };
+
+      var WELCOME = {
+        role: "bot",
+        text: "Merhaba! Ben KOSKİ Dijital Asistanı. Size daha iyi hizmet verebilmemiz için 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında hazırlanan [Aydınlatma Metni](#)'ni okuyup onaylamanız gerekmektedir.",
+        quick_replies: [
+          { label: "Okudum, Onaylıyorum", payload: "KVKK_METNI_ONAYLANDI" },
+          { label: "Onaylamıyorum", payload: "KVKK_METNI_REDDEDILDI" }
+        ],
+        links: []
+      };
+
+      // --- YENİ MİMARİ: Geçici Değişkenler ---
+      // Sayfa her yenilendiğinde yepyeni bir ID üretilir ve KVKK sıfırlanır.
+      let aktifSessionId = 'sess_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      let kvkkOnayiVerildi = false;
+
+      var $ = function (id) { return document.getElementById(id); };
+      var panel = $("kchatPanel"), body = $("kchatBody"), fab = $("kchatFab"),
+          fabIcon = $("kchatFabIcon"), unread = $("kchatUnread"), input = $("kchatInput"),
+          sendBtn = $("kchatSend"), form = $("kchatForm"), closeBtn = $("kchatClose");
+      var open = false, greeted = false;
+
+      function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+      function fmt(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>"); }
+      function scrollDown(){ requestAnimationFrame(function(){ body.scrollTop = body.scrollHeight; }); }
+
+      function addMessage(msg){
+        var wrap = document.createElement("div");
+        wrap.className = "kmsg " + msg.role;
+        var avatar = msg.role === "bot" ? '<div class="kbavatar"><i class="bi bi-robot"></i></div>' : "";
+        var links = "";
+        if (msg.links && msg.links.length){
+          links = "<div>" + msg.links.map(function(l){
+            return '<a class="klink" href="'+l.url+'" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> '+esc(l.label)+'</a>';
+          }).join("") + "</div>";
+        }
+        wrap.innerHTML = avatar + '<div class="kbub '+msg.role+'">' + fmt(msg.text) + links + "</div>";
+        body.appendChild(wrap);
+
+        if (msg.role === "bot" && msg.quick_replies && msg.quick_replies.length){
+          var qw = document.createElement("div");
+          qw.className = "kquickwrap";
+          msg.quick_replies.forEach(function(q){
+            var b = document.createElement("button");
+            b.className = "kquick"; b.textContent = q.label;
+            b.onclick = function(){ send(q.payload); };
+            qw.appendChild(b);
+          });
+          body.appendChild(qw);
+        }
+        scrollDown();
+      }
+
+      function showTyping(){
+        var w = document.createElement("div");
+        w.className = "kmsg bot"; w.id = "kchatTyping";
+        w.innerHTML = '<div class="kbavatar"><i class="bi bi-robot"></i></div><div class="kbub bot" style="padding:0"><div class="ktyping"><span></span><span></span><span></span></div></div>';
+        body.appendChild(w); scrollDown();
+      }
+      function hideTyping(){ var t = $("kchatTyping"); if (t) t.remove(); }
+
+      function send(text){
+        text = (text || "").trim();
+        if (!text) return;
+
+        // --- 1. AŞAMA: KVKK GÜVENLİK DUVARI ---
+        if (!kvkkOnayiVerildi) {
+            let gosterilecekMetin = text;
+            if (text === "KVKK_METNI_ONAYLANDI") gosterilecekMetin = "Aydınlatma metnini okudum ve kabul ediyorum.";
+            if (text === "KVKK_METNI_REDDEDILDI") gosterilecekMetin = "Kişisel verilerimin işlenmesini onaylamıyorum.";
+            
+            addMessage({ role: "user", text: gosterilecekMetin });
+            showTyping();
+
+            setTimeout(function() {
+                hideTyping();
+                if (text === "KVKK_METNI_ONAYLANDI") {
+                    // ONAY VERİLDİ: Değişkeni true yap ve kilidi aç
+                    kvkkOnayiVerildi = true;
+                    input.disabled = false;
+                    input.placeholder = "Sorunuzu yazın... (örn. sular ne zaman gelir?)";
+                    setTimeout(function(){ input.focus(); }, 100);
+
+                    addMessage({
+                        role: "bot",
+                        text: "KVKK onayınız sistemlerimize başarıyla kaydedilmiştir. 💧 KOSKİ hizmetleri, fatura işlemleri ve su arızaları hakkında size nasıl yardımcı olabilirim?",
+                        quick_replies: [
+                            { label: "Fatura Sorgula", payload: "Su faturamı nasıl öderim?" },
+                            { label: "Su Kesintisi", payload: "Sular ne zaman gelecek?" }
+                        ]
+                    });
+                } else if (text === "KVKK_METNI_REDDEDILDI") {
+                    addMessage({
+                        role: "bot",
+                        text: "Kurum politikalarımız gereği, KVKK onayı olmadan kişisel verilerinizi işleyemediğimiz için görüşmeye devam edemiyoruz. KOSKİ'ye gösterdiğiniz ilgi için teşekkür eder, iyi günler dileriz."
+                    });
+                    input.disabled = true;
+                    input.placeholder = "Görüşme sonlandırıldı.";
+                } else {
+                    addMessage({
+                        role: "bot",
+                        text: "Lütfen sohbete devam edebilmek için aşağıdaki butonları kullanarak KVKK onay durumunuzu belirtiniz.",
+                        quick_replies: [
+                            { label: "Okudum, Onaylıyorum", payload: "KVKK_METNI_ONAYLANDI" },
+                            { label: "Onaylamıyorum", payload: "KVKK_METNI_REDDEDILDI" }
+                        ]
+                    });
+                }
+            }, 600);
+            
+            return; 
+        }
+
+        // --- 2. AŞAMA: KVKK ONAYLIYSA NORMAL SOHBET ---
+        addMessage({ role: "user", text: text });
+        input.value = ""; sendBtn.disabled = true;
+        showTyping();
+
+        fetch(KCHAT_CONFIG.apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+             session_id: aktifSessionId, // Doğrudan oluşturduğumuz geçici değişkeni kullanıyoruz
+             vatandasAd: "Web Ziyaretçisi",
+             mesaj: text 
+          })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          setTimeout(function(){
+            hideTyping();
+            addMessage({ 
+                role: "bot", 
+                text: data.yapayZekaCevabi, 
+                quick_replies: [],
+                links: []
+             });
+          }, 550);
+        })
+        .catch(function(){
+          hideTyping();
+          addMessage({ 
+              role: "bot",
+              text: "Bağlantıda bir sorun oluştu. 😔 Lütfen arka planda sunucunun çalıştığından emin olun." 
+          });
+        });
+      }
+
+      function toggle(){
+        open = !open;
+        panel.classList.toggle("kchat-hidden", !open);
+        fabIcon.className = "bi " + (open ? "bi-chevron-down" : "bi-chat-dots-fill");
+        fab.setAttribute("aria-label", open ? "Sohbeti kapat" : "Sohbeti aç");
+        if (open){
+          fab.classList.remove("kchat-pulse");
+          unread.style.display = "none";
+          
+          if (!greeted){ 
+              addMessage(WELCOME); 
+              greeted = true; 
+          }
+          
+          if (!kvkkOnayiVerildi) {
+              input.disabled = true;
+              input.placeholder = "Lütfen yukarıdan KVKK seçimini yapın.";
+          } else {
+              input.disabled = false;
+              input.placeholder = "Sorunuzu yazın... (örn. sular ne zaman gelir?)";
+              setTimeout(function(){ input.focus(); }, 300);
+          }
+          
+          scrollDown();
+        }
+      }
+
+      fab.addEventListener("click", toggle);
+      closeBtn.addEventListener("click", toggle);
+      form.addEventListener("submit", function(e){ e.preventDefault(); send(input.value); });
+      input.addEventListener("input", function(){ sendBtn.disabled = !input.value.trim(); });
+      sendBtn.disabled = true;
+    })();
+</script>
+</body>
+</html>
