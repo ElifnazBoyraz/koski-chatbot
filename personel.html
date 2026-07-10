@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOSKİ Yönetim Paneli</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body { margin: 0; font-family: 'Onest', sans-serif; background: #f4f7f6; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* Üst Menü (Navbar) */
+        .navbar { background: linear-gradient(135deg, #063d75 0%, #0a5cb8 100%); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(6, 61, 117, 0.15); z-index: 10; }
+        .navbar h2 { margin: 0; font-family: 'Sora', sans-serif; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+        .btn-exit { background: rgba(255, 255, 255, 0.15); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; font-weight: 600; transition: background 0.3s; }
+        .btn-exit:hover { background: rgba(255, 255, 255, 0.25); }
+
+        /* Ana Düzen (Yan Menü + Sohbet Alanı) */
+        .dashboard { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Sol Menü: Vatandaş Listesi */
+        .sidebar { width: 320px; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0b1f38; }
+        .session-list { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
+        .session-item { padding: 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s; }
+        .session-item:hover { background: #f0f5fb; }
+        .session-item.active { background: #eef5fc; border-left: 4px solid #17b3c9; }
+        .session-id-text { font-weight: 600; color: #063d75; font-size: 0.9rem; word-break: break-all; }
+        .session-date { font-size: 0.75rem; color: #64748b; margin-top: 5px; }
+
+        /* Sağ Taraf: Sohbet Geçmişi */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #f4f7f6; }
+        .chat-header { padding: 15px 25px; background: white; border-bottom: 1px solid #e2e8f0; color: #0b1f38; font-weight: 600; display: flex; justify-content: space-between; }
+        .chat-box { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Mesaj Balonları */
+        .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; position: relative; }
+        .msg.Vatandaş { align-self: flex-start; background: white; color: #0b1f38; border-bottom-left-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .msg.Bot { align-self: flex-end; background: #eef5fc; color: #063d75; border-bottom-right-radius: 4px; box-shadow: 0 4px 6px -1px rgba(10, 92, 184, 0.1); border: 1px solid rgba(10, 92, 184, 0.1); }
+        .msg-time { display: block; font-size: 0.7rem; margin-top: 6px; opacity: 0.7; text-align: right; }
+
+        /* Hoşgeldin Ekranı (Seçim yapılmadan önce) */
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #94a3b8; }
+        .empty-state i { font-size: 4rem; margin-bottom: 15px; color: #cbd5e1; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <h2><i class="bi bi-shield-check"></i> KOSKİ Yönetim Paneli</h2>
+    <a href="#" onclick="localStorage.removeItem('personel_yetki'); window.location.href='giris.html';" class="btn-exit"><i class="bi bi-box-arrow-left"></i> Çıkış Yap</a>
+</div>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="bi bi-people-fill"></i> Aktif Vatandaş Görüşmeleri
+        </div>
+        <ul class="session-list" id="sessionList">
+            <li style="padding: 15px; text-align: center; color: #64748b;">Yükleniyor...</li>
+        </ul>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header" id="chatHeader">
+            <span>Seçili Görüşme Yok</span>
+        </div>
+        <div class="chat-box" id="chatBox">
+            <div class="empty-state">
+                <i class="bi bi-chat-square-text"></i>
+                <p>Geçmiş mesajları görmek için sol taraftan bir sohbet seçin.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // GÜVENLİK KONTROLÜ: Eğer yetki yoksa, zorla giriş sayfasına at!
+if (localStorage.getItem("personel_yetki") !== "tamam") {
+    window.location.href = "personel-giris.html";
+}
+    const API_BASE = "http://localhost:8000/api/personel";
+
+    // Sayfa açıldığında oturumları (vatandaşları) getir
+    async function oturumlariYukle() {
+        try {
+            const response = await fetch(`${API_BASE}/oturumlar`);
+            const data = await response.json();
+            const listEl = document.getElementById("sessionList");
+            listEl.innerHTML = ""; // Yükleniyor yazısını temizle
+
+            if (data.oturumlar.length === 0) {
+                listEl.innerHTML = '<li style="padding: 15px; text-align: center; color: #64748b;">Kayıtlı sohbet bulunamadı.</li>';
+                return;
+            }
+
+            data.oturumlar.forEach(oturum => {
+                const li = document.createElement("li");
+                li.className = "session-item";
+                
+                // Tarihi daha okunaklı yap
+                const tarih = new Date(oturum.tarih).toLocaleString('tr-TR');
+
+                li.innerHTML = `
+                    <div class="session-id-text"><i class="bi bi-person"></i> ${oturum.session_id.substring(0, 15)}...</div>
+                    <div class="session-date">${tarih}</div>
+                `;
+                
+                // Tıklandığında mesajları getir
+                li.onclick = () => {
+                    // Aktif sınıfını güncelle
+                    document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+                    li.classList.add('active');
+                    mesajlariYukle(oturum.session_id);
+                };
+                listEl.appendChild(li);
+            });
+        } catch (error) {
+            console.error("Oturumlar çekilirken hata:", error);
+            document.getElementById("sessionList").innerHTML = '<li style="color: red; padding: 15px;">Bağlantı hatası! Sunucu açık mı?</li>';
+        }
+    }
+
+    // Seçilen oturumun mesaj geçmişini getir
+    async function mesajlariYukle(sessionId) {
+        const chatBox = document.getElementById("chatBox");
+        const chatHeader = document.getElementById("chatHeader");
+        
+        chatHeader.innerHTML = `<span><i class="bi bi-record-circle-fill text-success" style="color: #4ade80;"></i> Görüntülenen: <b>${sessionId}</b></span>`;
+        chatBox.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">Mesajlar yükleniyor...</div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/mesajlar/${sessionId}`);
+            const data = await response.json();
+            
+            chatBox.innerHTML = ""; // Temizle
+            
+            data.mesajlar.forEach(m => {
+                const div = document.createElement("div");
+                div.className = `msg ${m.gonderen}`;
+                
+                // Tarihi formatla
+                const saat = new Date(m.zaman).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+                div.innerHTML = `
+                    <b>${m.gonderen}</b><br>
+                    ${m.mesaj}
+                    <span class="msg-time">${saat}</span>
+                `;
+                chatBox.appendChild(div);
+            });
+
+            // En alta kaydır
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+        } catch (error) {
+            console.error("Mesajlar çekilirken hata:", error);
+            chatBox.innerHTML = '<div style="color: red; padding: 20px;">Mesajlar yüklenemedi.</div>';
+        }
+    }
+
+    // İlk açılışta fonksiyonu tetikle
+    oturumlariYukle();
+</script>
+
+</body>
+</html>
