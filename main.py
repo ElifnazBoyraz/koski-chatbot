@@ -48,7 +48,8 @@ def veritabani_kur():
                            kullanici_tipi TEXT DEFAULT 'Vatandaş',
                            olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                            kvkk_onay BOOLEAN DEFAULT FALSE,
-                           ilgili_birim_id INT REFERENCES Birimler(birim_id) ON DELETE SET NULL)''')
+                           durum VARCHAR(30) DEFAULT 'Yeni',
+                          ilgili_birim_id INT REFERENCES Birimler(birim_id) ON DELETE SET NULL)''')
         
         # 4. MESAJLAR TABLOSU (Sohbet Oturumlarına Bağlı)
         cursor.execute('''CREATE TABLE IF NOT EXISTS Mesajlar 
@@ -138,6 +139,9 @@ class PersonelGiris(BaseModel):
     kullanici_adi: str
     sifre: str   
 
+class DurumGuncelle(BaseModel):
+    durum: str    
+
 # VATANDAŞ PANELİ: Yeni Mesaj ve Yapay Zeka Yönlendirmesi
 @app.post("/api/talepler/yeni") 
 def talep_kaydet(talep: GelenMesaj):
@@ -161,7 +165,7 @@ def talep_kaydet(talep: GelenMesaj):
 
     # 2. BEYİN'E (QWEN'E) VERİLEN AKILLI TALİMAT (PROMPT)
     prompt = (
-    "Sen Konya KOSKİ'nin resmi dijital asistanısın. Her zaman sadece Türkçe konuş.\n"
+    "Sen Konya KOSKİ'nin resmi dijital asistanısın. HER ZAMAN SADECE TÜRKÇE KONUŞ.\n"
     "Cevapların kısa, anlaşılır, resmi ve kurumsal olmalıdır.\n"
     "Görevin vatandaşın mesajını anlamak, uygun bir cevap vermek ve mesajı doğru KOSKİ birimine yönlendirmektir.\n\n"
 
@@ -254,8 +258,6 @@ def aktif_oturumlari_getir(
     conn = psycopg2.connect(**DB_CONFIG)
     cursor = conn.cursor()
 
-    # Yönetici tüm sohbetleri görebilir.
-    # Eğer filtre_birim_id geldiyse sadece seçilen birime ait sohbetleri görür.
     if yetki_seviyesi == "Yönetici":
 
         if filtre_birim_id:
@@ -264,7 +266,8 @@ def aktif_oturumlari_getir(
                     s.session_id,
                     s.olusturma_tarihi,
                     s.ilgili_birim_id,
-                    COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi
+                    COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi,
+                    COALESCE(s.durum, 'Yeni') AS durum
                 FROM SohbetOturumlari s
                 LEFT JOIN Birimler b 
                     ON s.ilgili_birim_id = b.birim_id
@@ -278,7 +281,8 @@ def aktif_oturumlari_getir(
                     s.session_id,
                     s.olusturma_tarihi,
                     s.ilgili_birim_id,
-                    COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi
+                    COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi,
+                    COALESCE(s.durum, 'Yeni') AS durum
                 FROM SohbetOturumlari s
                 LEFT JOIN Birimler b 
                     ON s.ilgili_birim_id = b.birim_id
@@ -286,14 +290,14 @@ def aktif_oturumlari_getir(
                 ORDER BY s.olusturma_tarihi DESC
             """)
 
-    # Standart personel sadece kendi birimine ait sohbetleri görebilir.
     else:
         cursor.execute("""
             SELECT 
                 s.session_id,
                 s.olusturma_tarihi,
                 s.ilgili_birim_id,
-                COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi
+                COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi,
+                COALESCE(s.durum, 'Yeni') AS durum
             FROM SohbetOturumlari s
             LEFT JOIN Birimler b 
                 ON s.ilgili_birim_id = b.birim_id
@@ -313,7 +317,8 @@ def aktif_oturumlari_getir(
                 "session_id": o[0],
                 "tarih": str(o[1]),
                 "birim_id": o[2],
-                "birim_adi": o[3]
+                "birim_adi": o[3],
+                "durum": o[4]
             }
             for o in oturumlar
         ]
@@ -357,3 +362,42 @@ def personel_giris_kontrol(bilgiler: PersonelGiris):
         }
     else:
         return {"durum": False, "mesaj": "Kullanıcı adı veya şifre yanlış."}
+    
+# PERSONEL PANELİ 4: Görüşme durumunu güncelle
+@app.put("/api/personel/oturumlar/{session_id}/durum")
+def oturum_durumunu_guncelle(session_id: str, veri: DurumGuncelle):
+    izinli_durumlar = ["Yeni", "İnceleniyor", "Tamamlandı"]
+
+    if veri.durum not in izinli_durumlar:
+        return {
+            "durum": False,
+            "mesaj": "Geçersiz durum bilgisi."
+        }
+
+    conn = psycopg2.connect(**DB_CONFIG)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE SohbetOturumlari
+        SET durum = %s
+        WHERE session_id = %s
+    """, (veri.durum, session_id))
+
+    conn.commit()
+
+    guncellenen_kayit_sayisi = cursor.rowcount
+
+    cursor.close()
+    conn.close()
+
+    if guncellenen_kayit_sayisi == 0:
+        return {
+            "durum": False,
+            "mesaj": "Güncellenecek sohbet oturumu bulunamadı."
+        }
+
+    return {
+        "durum": True,
+        "mesaj": "Görüşme durumu başarıyla güncellendi.",
+        "yeni_durum": veri.durum
+    } 
