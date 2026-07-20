@@ -257,7 +257,8 @@
           body: JSON.stringify({ 
              session_id: aktifSessionId, // Doğrudan oluşturduğumuz geçici değişkeni kullanıyoruz
              vatandasAd: "Web Ziyaretçisi",
-             mesaj: text 
+             mesaj: text,
+             kvkk_onay: kvkkOnayiVerildi 
           })
         })
         .then(function(r){ return r.json(); })

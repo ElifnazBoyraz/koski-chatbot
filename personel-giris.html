@@ -59,7 +59,12 @@
             if(data.durum === true) {
                 // Giriş başarılıysa tarayıcıya "Bu kişi yetkili" damgası vur
                 localStorage.setItem("personel_yetki", "tamam");
-                window.location.href = "personel.html"; // Paneli aç
+
+                localStorage.setItem("ad_soyad", data.ad_soyad);
+                localStorage.setItem("yetki_seviyesi", data.yetki_seviyesi);
+                localStorage.setItem("birim_id", data.birim_id);
+
+                window.location.href = "personel.html";
             } else {
                 hata.style.display = "block"; // Hata mesajını göster
             }
