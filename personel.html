@@ -162,6 +162,57 @@
         border-color: #0a5cb8;
     }
             .chat-box { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+            .note-panel {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 15px 25px;
+            display: none;
+        }
+
+        .note-title {
+            font-weight: 700;
+            color: #0b1f38;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .note-area {
+            width: 100%;
+            min-height: 70px;
+            resize: vertical;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .note-area:focus {
+            border-color: #0a5cb8;
+            box-shadow: 0 0 0 3px rgba(10, 92, 184, 0.1);
+        }
+
+        .note-actions {
+            margin-top: 8px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-note-save {
+            background: #0a5cb8;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-note-save:hover {
+            background: #063d75;
+        }
         
         /* Mesaj Balonları */
         .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; position: relative; }
@@ -220,11 +271,29 @@
         </ul>
     </div>
 
-    <div class="chat-area">
-        <div class="chat-header" id="chatHeader">
-            <span>Seçili Görüşme Yok</span>
+   <div class="chat-area">
+    <div class="chat-header" id="chatHeader">
+        <span>Seçili Görüşme Yok</span>
+    </div>
+
+    <div class="note-panel" id="notePanel">
+        <div class="note-title">
+            <i class="bi bi-journal-text"></i> Personel Notu
         </div>
-        <div class="chat-box" id="chatBox">
+
+        <textarea 
+            class="note-area" 
+            id="personelNotu" 
+            placeholder="Bu görüşme ile ilgili kurum içi not yazın..."></textarea>
+
+        <div class="note-actions">
+            <button class="btn-note-save" onclick="personelNotuKaydet()">
+                <i class="bi bi-save"></i> Notu Kaydet
+            </button>
+        </div>
+    </div>
+
+    <div class="chat-box" id="chatBox">
             <div class="empty-state">
                 <i class="bi bi-chat-square-text"></i>
                 <p>Geçmiş mesajları görmek için sol taraftan bir sohbet seçin.</p>
@@ -240,6 +309,7 @@ if (localStorage.getItem("personel_yetki") !== "tamam") {
 }
     const API_BASE = "http://localhost:8000/api/personel";
     let aktifFiltreBirimId = "tum";
+    let aktifSessionId = null;
     const birimAdlari = {
         "1": "Abonelik İşlemleri",
         "2": "Sayaç İşlemleri",
@@ -330,6 +400,36 @@ async function durumGuncelle(sessionId, yeniDurum) {
     }
 }
 
+async function personelNotuKaydet() {
+    if (!aktifSessionId) {
+        alert("Önce bir görüşme seçmelisiniz.");
+        return;
+    }
+
+    const notMetni = document.getElementById("personelNotu").value;
+
+    try {
+        const response = await fetch(`${API_BASE}/oturumlar/${aktifSessionId}/not`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ personel_notu: notMetni })
+        });
+
+        const data = await response.json();
+
+        if (data.durum === true) {
+            alert("Personel notu kaydedildi.");
+            await oturumlariYukle();
+        } else {
+            alert(data.mesaj || "Not kaydedilemedi.");
+        }
+
+    } catch (error) {
+        console.error("Not kaydedilirken hata oluştu:", error);
+        alert("Sunucuya bağlanılamadı. Not kaydedilemedi.");
+    }
+}
+
     // Sayfa açıldığında oturumları (vatandaşları) getir
     async function oturumlariYukle() {
         // Hafızadan mühürlediğimiz bilgileri geri çağır
@@ -383,6 +483,9 @@ async function durumGuncelle(sessionId, yeniDurum) {
                     // Aktif sınıfını güncelle
                     document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
                     li.classList.add('active');
+                   aktifSessionId = oturum.session_id;
+                    document.getElementById("notePanel").style.display = "block";
+                    document.getElementById("personelNotu").value = oturum.personel_notu || "";
                     mesajlariYukle(oturum.session_id, oturum.durum);
                 };
                 listEl.appendChild(li);

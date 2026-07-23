@@ -49,6 +49,7 @@ def veritabani_kur():
                            olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                            kvkk_onay BOOLEAN DEFAULT FALSE,
                            durum VARCHAR(30) DEFAULT 'Yeni',
+                           personel_notu TEXT,
                           ilgili_birim_id INT REFERENCES Birimler(birim_id) ON DELETE SET NULL)''')
         
         # 4. MESAJLAR TABLOSU (Sohbet Oturumlarına Bağlı)
@@ -141,6 +142,9 @@ class PersonelGiris(BaseModel):
 
 class DurumGuncelle(BaseModel):
     durum: str    
+
+class PersonelNotuGuncelle(BaseModel):
+    personel_notu: str
 
 # VATANDAŞ PANELİ: Yeni Mesaj ve Yapay Zeka Yönlendirmesi
 @app.post("/api/talepler/yeni") 
@@ -267,7 +271,8 @@ def aktif_oturumlari_getir(
                     s.olusturma_tarihi,
                     s.ilgili_birim_id,
                     COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi,
-                    COALESCE(s.durum, 'Yeni') AS durum
+                    COALESCE(s.durum, 'Yeni') AS durum,
+                    COALESCE(s.personel_notu, '') AS personel_notu
                 FROM SohbetOturumlari s
                 LEFT JOIN Birimler b 
                     ON s.ilgili_birim_id = b.birim_id
@@ -282,7 +287,8 @@ def aktif_oturumlari_getir(
                     s.olusturma_tarihi,
                     s.ilgili_birim_id,
                     COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi,
-                    COALESCE(s.durum, 'Yeni') AS durum
+                    COALESCE(s.durum, 'Yeni') AS durum,
+                    COALESCE(s.personel_notu, '') AS personel_notu
                 FROM SohbetOturumlari s
                 LEFT JOIN Birimler b 
                     ON s.ilgili_birim_id = b.birim_id
@@ -297,7 +303,8 @@ def aktif_oturumlari_getir(
                 s.olusturma_tarihi,
                 s.ilgili_birim_id,
                 COALESCE(b.birim_adi, 'Birim Atanmadı') AS birim_adi,
-                COALESCE(s.durum, 'Yeni') AS durum
+                COALESCE(s.durum, 'Yeni') AS durum,
+                COALESCE(s.personel_notu, '') AS personel_notu
             FROM SohbetOturumlari s
             LEFT JOIN Birimler b 
                 ON s.ilgili_birim_id = b.birim_id
@@ -318,7 +325,8 @@ def aktif_oturumlari_getir(
                 "tarih": str(o[1]),
                 "birim_id": o[2],
                 "birim_adi": o[3],
-                "durum": o[4]
+                "durum": o[4],
+                "personel_notu": o[5]
             }
             for o in oturumlar
         ]
@@ -401,3 +409,36 @@ def oturum_durumunu_guncelle(session_id: str, veri: DurumGuncelle):
         "mesaj": "Görüşme durumu başarıyla güncellendi.",
         "yeni_durum": veri.durum
     } 
+
+
+# PERSONEL PANELİ 5: Personel notunu güncelle
+@app.put("/api/personel/oturumlar/{session_id}/not")
+def personel_notunu_guncelle(session_id: str, veri: PersonelNotuGuncelle):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE SohbetOturumlari
+        SET personel_notu = %s
+        WHERE session_id = %s
+    """, (veri.personel_notu, session_id))
+
+    conn.commit()
+
+    guncellenen_kayit_sayisi = cursor.rowcount
+
+    cursor.close()
+    conn.close()
+
+    if guncellenen_kayit_sayisi == 0:
+        return {
+            "durum": False,
+            "mesaj": "Not eklenecek sohbet oturumu bulunamadı."
+        }
+
+    return {
+        "durum": True,
+        "mesaj": "Personel notu başarıyla kaydedildi.",
+        "personel_notu": veri.personel_notu
+    }
+
